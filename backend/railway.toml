@@ -1,0 +1,18 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile"
+dockerContext = "."        # project root
+
+[deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+
+[[services.variables]]
+name = "GAUGEDATA_DIR"
+value = "/app/data"
+
+[[services.variables]]
+name = "DEMO_MODE"
+value = "true"

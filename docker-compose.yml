@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: .                       # project root so COPY data/ works
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data               # persist DB + samples between restarts
+    environment:
+      - DATABASE_URL=sqlite:////app/data/gaugeGuard.db
+      - GAUGEDATA_DIR=/app/data
+      - DEMO_MODE=true
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
