@@ -10,7 +10,15 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from components.charts import grr_pie_chart
 
-BACKEND = os.getenv("BACKEND_URL", "http://localhost:8000")
+def _backend_url() -> str:
+    if url := os.getenv("BACKEND_URL"):
+        return url
+    try:
+        return st.secrets["BACKEND_URL"]
+    except Exception:
+        return "http://localhost:8000"
+
+BACKEND = _backend_url()
 API = f"{BACKEND}/api/v1"
 
 st.set_page_config(page_title="GR&R Analysis — GaugeGuard AI", layout="wide", page_icon="📏")
@@ -104,7 +112,8 @@ with tab_sample:
     if st.button("▶ Run GR&R Analysis", type="primary", use_container_width=True):
         with st.spinner("Generating measurement data..."):
             r = requests.post(f"{API}/datasets/generate/grr",
-                              json={"scenario": scenario.replace("grr_", "")})
+                              json={"scenario": scenario.replace("grr_", "")},
+                              timeout=40)
         if r.status_code != 200:
             st.error(f"Failed to generate dataset: {r.text}")
             st.stop()
@@ -113,7 +122,7 @@ with tab_sample:
         with st.spinner(f"Running AIAG MSA analysis using {method_s} method..."):
             ar = requests.post(f"{API}/grr/analyze",
                                json={"dataset_id": dataset_id, "method": method_s,
-                                     "equipment_id": equipment_s})
+                                     "equipment_id": equipment_s}, timeout=40)
         if ar.status_code not in (200, 422):
             st.error(f"Analysis error: {ar.text}")
         else:
@@ -150,14 +159,14 @@ with tab_upload:
 
         if st.button("▶ Analyze CSV", type="primary"):
             files = {"file": (uploaded.name, uploaded.getvalue(), "text/csv")}
-            up_r = requests.post(f"{API}/datasets/upload", files=files)
+            up_r = requests.post(f"{API}/datasets/upload", files=files, timeout=40)
             if up_r.status_code != 200:
                 st.error(f"Upload failed: {up_r.text}")
             else:
                 did = up_r.json()["dataset_id"]
                 ar = requests.post(f"{API}/grr/analyze",
                                    json={"dataset_id": did, "method": method_u,
-                                         "equipment_id": equipment_u})
+                                         "equipment_id": equipment_u}, timeout=40)
                 if ar.status_code == 200:
                     st.session_state["grr_result"] = ar.json()
                     st.session_state["grr_study_id"] = ar.json().get("study_id")
@@ -266,7 +275,7 @@ if "grr_result" in st.session_state:
     study_id = st.session_state.get("grr_study_id")
     if study_id:
         if st.button("📄 Generate HTML Report"):
-            rr = requests.get(f"{API}/grr/studies/{study_id}/report")
+            rr = requests.get(f"{API}/grr/studies/{study_id}/report", timeout=40)
             if rr.status_code == 200:
                 st.download_button(
                     "⬇️ Download Report",

@@ -6,7 +6,15 @@ from datetime import datetime
 import requests
 import streamlit as st
 
-BACKEND = os.getenv("BACKEND_URL", "http://localhost:8000")
+def _backend_url() -> str:
+    if url := os.getenv("BACKEND_URL"):
+        return url
+    try:
+        return st.secrets["BACKEND_URL"]
+    except Exception:
+        return "http://localhost:8000"
+
+BACKEND = _backend_url()
 API = f"{BACKEND}/api/v1"
 
 st.set_page_config(page_title="Settings — GaugeGuard AI", layout="wide", page_icon="⚙️")
@@ -45,7 +53,7 @@ with st.sidebar:
 st.markdown("# ⚙️ System Settings")
 st.markdown("> Adjust AIAG thresholds, SPC parameters, and notification channels.")
 
-r = requests.get(f"{API}/settings")
+r = requests.get(f"{API}/settings", timeout=40)
 current = r.json() if r.status_code == 200 else {}
 last_updated = current.get("updated_at", "—")[:16].replace("T", " ") if current else "—"
 st.caption(f"Last updated: {last_updated}")
@@ -119,7 +127,7 @@ if submitted:
         "smtp_port":          smtp_port,
         "demo_mode":          demo,
     }
-    sr = requests.put(f"{API}/settings", json=payload)
+    sr = requests.put(f"{API}/settings", json=payload, timeout=40)
     if sr.status_code == 200:
         st.success("✅ Settings saved successfully.")
         st.caption(f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")

@@ -6,7 +6,15 @@ import requests
 import pandas as pd
 import streamlit as st
 
-BACKEND = os.getenv("BACKEND_URL", "http://localhost:8000")
+def _backend_url() -> str:
+    if url := os.getenv("BACKEND_URL"):
+        return url
+    try:
+        return st.secrets["BACKEND_URL"]
+    except Exception:
+        return "http://localhost:8000"
+
+BACKEND = _backend_url()
 API = f"{BACKEND}/api/v1"
 
 st.set_page_config(page_title="Audit Log — GaugeGuard AI", layout="wide", page_icon="📋")
@@ -61,7 +69,7 @@ params: dict = {"limit": limit}
 if event_filter:
     params["event_type"] = event_filter
 
-r = requests.get(f"{API}/audit-logs", params=params)
+r = requests.get(f"{API}/audit-logs", params=params, timeout=40)
 items = r.json().get("items", []) if r.status_code == 200 else []
 
 if not items:

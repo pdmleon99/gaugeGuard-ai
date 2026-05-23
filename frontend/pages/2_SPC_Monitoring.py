@@ -10,7 +10,15 @@ import streamlit as st
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from components.charts import spc_chart
 
-BACKEND = os.getenv("BACKEND_URL", "http://localhost:8000")
+def _backend_url() -> str:
+    if url := os.getenv("BACKEND_URL"):
+        return url
+    try:
+        return st.secrets["BACKEND_URL"]
+    except Exception:
+        return "http://localhost:8000"
+
+BACKEND = _backend_url()
 API = f"{BACKEND}/api/v1"
 
 st.set_page_config(page_title="SPC Monitoring — GaugeGuard AI", layout="wide", page_icon="📊")
@@ -89,7 +97,7 @@ if "spc_result" not in st.session_state:
 
 if run_btn:
     with st.spinner(f"Generating SPC dataset '{scenario}'..."):
-        r = requests.post(f"{API}/datasets/generate/spc", json={"scenario": scenario})
+        r = requests.post(f"{API}/datasets/generate/spc", json={"scenario": scenario}, timeout=40)
     if r.status_code != 200:
         st.error(f"Error: {r.text}")
         st.stop()
@@ -99,7 +107,7 @@ if run_btn:
             "dataset_id": r.json()["dataset_id"],
             "process_id": process_id,
             "subgroup_size": subgroup_size,
-        })
+        }, timeout=40)
     if ar.status_code != 200:
         st.error(f"Analysis error: {ar.text}")
         st.stop()

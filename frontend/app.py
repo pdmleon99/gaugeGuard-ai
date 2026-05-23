@@ -5,7 +5,15 @@ import os
 import requests
 import streamlit as st
 
-BACKEND = os.getenv("BACKEND_URL", "http://localhost:8000")
+def _backend_url() -> str:
+    if url := os.getenv("BACKEND_URL"):
+        return url
+    try:
+        return st.secrets["BACKEND_URL"]
+    except Exception:
+        return "http://localhost:8000"
+
+BACKEND = _backend_url()
 API = f"{BACKEND}/api/v1"
 
 st.set_page_config(
@@ -99,7 +107,7 @@ hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 20px 0;
 
 def _get(path: str) -> dict | None:
     try:
-        r = requests.get(f"{API}{path}", timeout=5)
+        r = requests.get(f"{API}{path}", timeout=40)
         return r.json() if r.status_code == 200 else None
     except Exception:
         return None
@@ -107,7 +115,7 @@ def _get(path: str) -> dict | None:
 
 def backend_ok() -> bool:
     try:
-        return requests.get(f"{BACKEND}/health", timeout=3).status_code == 200
+        return requests.get(f"{BACKEND}/health", timeout=40).status_code == 200
     except Exception:
         return False
 

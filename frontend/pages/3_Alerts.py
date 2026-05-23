@@ -5,7 +5,15 @@ import os
 import requests
 import streamlit as st
 
-BACKEND = os.getenv("BACKEND_URL", "http://localhost:8000")
+def _backend_url() -> str:
+    if url := os.getenv("BACKEND_URL"):
+        return url
+    try:
+        return st.secrets["BACKEND_URL"]
+    except Exception:
+        return "http://localhost:8000"
+
+BACKEND = _backend_url()
 API = f"{BACKEND}/api/v1"
 
 st.set_page_config(page_title="Alerts — GaugeGuard AI", layout="wide", page_icon="🔔")
@@ -41,7 +49,7 @@ st.markdown("# 🔔 Alert Management")
 st.markdown("> Review, acknowledge, and rate alerts generated automatically by the system.")
 
 # Stats bar
-stats_r = requests.get(f"{API}/alerts/stats")
+stats_r = requests.get(f"{API}/alerts/stats", timeout=40)
 if stats_r.status_code == 200:
     s = stats_r.json()
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -68,7 +76,7 @@ severity_filter = col_s.multiselect(
 )
 show_unacked_only = col_a.checkbox("Show unacknowledged only", value=False)
 
-r = requests.get(f"{API}/alerts", params={"limit": 200})
+r = requests.get(f"{API}/alerts", params={"limit": 200}, timeout=40)
 items = r.json().get("items", []) if r.status_code == 200 else []
 
 if severity_filter:
@@ -121,7 +129,7 @@ else:
             with col_actions:
                 if not alert["acknowledged"]:
                     if st.button("✅ Acknowledge", key=f"ack_{alert['id']}"):
-                        requests.post(f"{API}/alerts/{alert['id']}/acknowledge")
+                        requests.post(f"{API}/alerts/{alert['id']}/acknowledge", timeout=40)
                         st.rerun()
                 st.markdown("**Rate this alert:**")
                 fb = st.radio(
@@ -135,5 +143,5 @@ else:
                     requests.post(
                         f"{API}/alerts/{alert['id']}/feedback",
                         json={"feedback": fb, "comment": comment or None},
-                    )
+                        timeout=40)
                     st.rerun()
