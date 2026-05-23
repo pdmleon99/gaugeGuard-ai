@@ -34,7 +34,17 @@ async def lifespan(app: FastAPI):
     create_tables()
     seed_default_settings()
     _ensure_samples()
+    _seed_demo()
     yield
+
+
+def _seed_demo() -> None:
+    """Seed demo analyses if DB is empty — gives the dashboard instant data."""
+    try:
+        from .data.seed import seed_demo_data
+        seed_demo_data()
+    except Exception as exc:
+        print(f"[GaugeGuard] Warning: demo seed failed — {exc}")
 
 
 app = FastAPI(
